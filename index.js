@@ -25,6 +25,7 @@ app.use(express.static("./public"));
 
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/user", require("./routes/userRoutes"));
+app.use("/api/post", require("./routes/postRoutes"));
 
 app.use(errorHandler);
 
