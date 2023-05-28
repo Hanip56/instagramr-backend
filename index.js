@@ -24,6 +24,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.static("./public"));
 
 app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/user", require("./routes/userRoutes"));
 
 app.use(errorHandler);
 

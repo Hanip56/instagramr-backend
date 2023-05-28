@@ -65,6 +65,18 @@ const userSchema = mongoose.Schema(
   { timestamps: true }
 );
 
+userSchema.virtual("totalPost").get(function () {
+  return this.posts.length;
+});
+userSchema.virtual("totalFollowers").get(function () {
+  return this.followers.length;
+});
+userSchema.virtual("totalFollowings").get(function () {
+  return this.followings.length;
+});
+
+userSchema.set("toJSON", { virtuals: true });
+
 const slugifyOptions = {
   replacement: "_",
   lower: true,
