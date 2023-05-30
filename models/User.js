@@ -33,7 +33,10 @@ const userSchema = mongoose.Schema(
       select: false,
     },
     // for profile detail
-    profilePicture: String,
+    profilePicture: {
+      type: String,
+      default: "default_profile_picture.png",
+    },
     porfileBio: String,
     posts: [
       {
