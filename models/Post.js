@@ -46,4 +46,13 @@ const postSchema = mongoose.Schema(
   { timestamps: true }
 );
 
+postSchema.virtual("totalLikes").get(function () {
+  return this.likes.length;
+});
+postSchema.virtual("totalComments").get(function () {
+  return this.comments.length;
+});
+
+postSchema.set("toJSON", { virtuals: true });
+
 module.exports = mongoose.model("Post", postSchema);

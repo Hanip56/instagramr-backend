@@ -147,7 +147,7 @@ const getPostFollowing = asyncHandler(async (req, res) => {
   const postFollowing = await Post.find({
     postedBy: { $in: user.followings },
   })
-    .populate("postedBy likes savedBy", "_id username profilePicture")
+    .populate("postedBy likes", "_id username profilePicture")
     .populate({
       path: "comments",
       populate: {
@@ -162,10 +162,127 @@ const getPostFollowing = asyncHandler(async (req, res) => {
   res.status(200).json({ posts: postFollowing, totalPosts, maxPages });
 });
 
+// @desc    like and unlike post
+// @route   PATCH /post/:postId/likeAndUnlike
+// @access  PRIVATE
+const likeAndUnlike = asyncHandler(async (req, res) => {
+  const post = await Post.findById(req.params.postId);
+
+  if (!post) {
+    res.status(404);
+    throw new Error("Post not found");
+  }
+
+  if (!post.likes.includes(req.user._id)) {
+    await post.updateOne({ $push: { likes: req.user._id } });
+
+    res.status(200).json({
+      _id: req.params.postId,
+      user: {
+        _id: req.user._id,
+        username: req.user.username,
+        profilePicture: req.user.profilePicture,
+      },
+      message: "The post has been liked",
+    });
+  } else {
+    await post.updateOne({ $pull: { likes: req.user._id } });
+
+    res.status(200).json({
+      _id: req.params.postId,
+      user: {
+        _id: req.user._id,
+        username: req.user.username,
+        profilePicture: req.user.profilePicture,
+      },
+      message: "The post has been unliked",
+    });
+  }
+});
+
+// @desc    save and unsave post
+// @route   UPDATE /post/:postId/saveandunsave
+// @access  PRIVATE
+const saveAndUnsave = asyncHandler(async (req, res) => {
+  const user = req.user;
+  const post = await Post.findById(req.params.postId);
+
+  if (!post.savedBy.includes(req.user._id)) {
+    await post.updateOne({ $push: { savedBy: req.user._id } });
+
+    await user.updateOne({ $push: { saved: post._id } });
+
+    res.status(200).json({
+      id: req.params.postId,
+      user: {
+        _id: req.user._id,
+        username: req.user.username,
+        profilePicture: req.user.profilePicture,
+      },
+      message: "The post has been saved",
+    });
+  } else {
+    await post.updateOne({ $pull: { savedBy: req.user._id } });
+
+    await user.updateOne({ $pull: { saved: post._id } });
+
+    res.status(200).json({
+      id: req.params.postId,
+      user: {
+        _id: req.user._id,
+        username: req.user.username,
+        profilePicture: req.user.profilePicture,
+      },
+      message: "The post has been Unsaved",
+    });
+  }
+});
+
+// @desc    add comment post
+// @route   UPDATE /post/:postId/addcomment
+// @access  PRIVATE
+const addComment = asyncHandler(async (req, res) => {
+  const post = await Post.findById(req.params.postId);
+
+  if (!post) {
+    res.status(404);
+    throw new Error("Post not found");
+  }
+
+  if (!req.body.comment) {
+    res.status(400);
+    throw new Error("Comment cant be empty");
+  }
+
+  try {
+    await post.updateOne({
+      $push: { comments: { user: req.user._id, comment: req.body.comment } },
+    });
+
+    const data = {
+      postId: req.params.postId,
+      user: {
+        _id: req.user._id,
+        username: req.user.username,
+        profilePicture: req.user.profilePicture,
+      },
+      comment: req.body.comment,
+    };
+
+    res.status(200).json({ data, message: "Comment added" });
+  } catch (error) {
+    res.status(500);
+    throw new Error(error.message);
+  }
+});
+
 module.exports = {
   uploadPost,
   getPosts,
   getPostDetail,
   deletePost,
   getPostFollowing,
+  likeAndUnlike,
+  saveAndUnsave,
+  addComment,
 };

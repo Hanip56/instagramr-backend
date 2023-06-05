@@ -16,30 +16,31 @@ const getUsers = asyncHandler(async (req, res) => {
 const getUser = asyncHandler(async (req, res) => {
   const username = req.params.username;
 
-  const user = await User.findOne({ username }).populate({
-    path: "followings followers",
-    select: "_id username profilePicture fullname",
-  });
-  // .populate({
-  //   path: "saved posts",
-  // })
-  // .populate({
-  //   path: "saved posts",
-  //   populate: {
-  //     path: "postedBy likes savedBy",
-  //     select: "_id username profilePicture",
-  //   },
-  // })
-  // .populate({
-  //   path: "saved posts",
-  //   populate: {
-  //     path: "comments",
-  //     populate: {
-  //       path: "user",
-  //       select: "_id username profilePicture",
-  //     },
-  //   },
-  // });
+  const user = await User.findOne({ username })
+    .populate({
+      path: "followings followers",
+      select: "_id username profilePicture fullname",
+    })
+    .populate({
+      path: "saved posts",
+    })
+    .populate({
+      path: "saved posts",
+      populate: {
+        path: "postedBy likes savedBy",
+        select: "_id username profilePicture",
+      },
+    })
+    .populate({
+      path: "saved posts",
+      populate: {
+        path: "comments",
+        populate: {
+          path: "user",
+          select: "_id username profilePicture",
+        },
+      },
+    });
 
   if (!user) {
     res.status(404);
@@ -118,9 +119,36 @@ const unfollowUser = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    find user
+// @route   GET /api/user/find?search=#&&limit=#
+// @access  PUBLIC
+const findUser = asyncHandler(async (req, res) => {
+  const search = req.query.search;
+  const limit = req.query.limit || 30;
+
+  if (!search) {
+    res.status(200).json([]);
+    return;
+  }
+
+  try {
+    const users = await User.find({
+      username: { $regex: search, $options: "i" },
+    })
+      .select("_id username fullname profilePicture followers totalFollowers")
+      .limit(limit);
+
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500);
+    throw new Error(error.message);
+  }
+});
+
 module.exports = {
   getUsers,
   getUser,
   followUser,
   unfollowUser,
+  findUser,
 };
