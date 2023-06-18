@@ -57,12 +57,12 @@ const getPosts = asyncHandler(async (req, res) => {
   const maxPages = Math.ceil(totalPosts / limit);
 
   const posts = await Post.find()
-    .populate("postedBy likes savedBy", "_id username profilePicture")
+    .populate("postedBy likes savedBy", "_id username profilePicture slug")
     .populate({
       path: "comments",
       populate: {
         path: "user",
-        select: "_id username profilePicture",
+        select: "_id username profilePicture slug",
       },
     })
     .limit(limit)
@@ -77,12 +77,12 @@ const getPosts = asyncHandler(async (req, res) => {
 // @access  PUBLIC
 const getPostDetail = asyncHandler(async (req, res) => {
   const post = await Post.findById(req.params.postId)
-    .populate("postedBy likes", "_id username profilePicture")
+    .populate("postedBy likes", "_id username profilePicture slug")
     .populate({
       path: "comments",
       populate: {
         path: "user",
-        select: "_id username profilePicture",
+        select: "_id username profilePicture slug",
       },
     });
 
@@ -147,12 +147,12 @@ const getPostFollowing = asyncHandler(async (req, res) => {
   const postFollowing = await Post.find({
     postedBy: { $in: user.followings },
   })
-    .populate("postedBy likes", "_id username profilePicture")
+    .populate("postedBy likes", "_id username profilePicture slug")
     .populate({
       path: "comments",
       populate: {
         path: "user",
-        select: "_id username profilePicture",
+        select: "_id username profilePicture slug",
       },
     })
     .sort({ createdAt: -1 })

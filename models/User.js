@@ -37,7 +37,7 @@ const userSchema = mongoose.Schema(
       type: String,
       default: "default_profile_picture.png",
     },
-    porfileBio: String,
+    profileBio: String,
     posts: [
       {
         type: mongoose.Schema.Types.ObjectId,
