@@ -7,6 +7,8 @@ const {
   likeAndUnlike,
   saveAndUnsave,
   addComment,
+  getSavedPost,
+  updatePost,
 } = require("../controllers/postCtrl");
 const { protect } = require("../middleware/authMiddleware");
 
@@ -17,7 +19,13 @@ router.route("/").get(getPosts).post(protect, uploadPost);
 
 router.route("/postfollowing").get(protect, getPostFollowing);
 
-router.route("/:postId").get(getPostDetail).delete(protect, deletePost);
+router.route("/saved").get(protect, getSavedPost);
+
+router
+  .route("/:postId")
+  .get(getPostDetail)
+  .delete(protect, deletePost)
+  .put(protect, updatePost);
 
 // like and unlike post
 router.route("/:postId/likeandunlike").patch(protect, likeAndUnlike);

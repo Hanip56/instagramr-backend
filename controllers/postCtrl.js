@@ -56,8 +56,14 @@ const getPosts = asyncHandler(async (req, res) => {
 
   const maxPages = Math.ceil(totalPosts / limit);
 
-  const posts = await Post.find()
-    .populate("postedBy likes savedBy", "_id username profilePicture slug")
+  let filter = {};
+
+  if (req.query.type) {
+    filter = { contentType: req.query.type };
+  }
+
+  const posts = await Post.find(filter)
+    .populate("postedBy likes", "_id username profilePicture slug")
     .populate({
       path: "comments",
       populate: {
@@ -115,6 +121,8 @@ const deletePost = asyncHandler(async (req, res) => {
   post.content?.map((c) => {
     fs.existsSync("./public/" + c) && fs.unlinkSync("./public/" + c);
   });
+  fs.existsSync("./public/thumbnail/" + post.thumbnail) &&
+    fs.unlinkSync("./public/thumbnail/" + post.thumbnail);
 
   const user = await User.findById(req.user._id);
 
@@ -122,6 +130,35 @@ const deletePost = asyncHandler(async (req, res) => {
   user.posts.splice(index, 1);
 
   await user.save();
+
+  res.status(200).json(post._id);
+});
+
+// @desc    update post
+// @route   PUT /post/:postId
+// @access  PRIVATE
+const updatePost = asyncHandler(async (req, res) => {
+  const post = await Post.findById(req.params.postId);
+
+  if (!post) {
+    res.status(404);
+    throw new Error("Post not found");
+  }
+
+  if (req.user._id.toString() !== post.postedBy.toString()) {
+    res.status(403);
+    throw new Error("Action Forbidden");
+  }
+
+  if (req.body.caption) {
+    const updatedPost = await Post.findByIdAndUpdate(
+      req.params.postId,
+      {
+        caption: req.body.caption,
+      },
+      { new: true }
+    );
+  }
 
   res.status(200).json(post._id);
 });
@@ -160,6 +197,42 @@ const getPostFollowing = asyncHandler(async (req, res) => {
     .skip(skipPost);
 
   res.status(200).json({ posts: postFollowing, totalPosts, maxPages });
+});
+
+// @desc    get saved post detail
+// @route   GET /post/saved
+// @access  PRIVATE
+const getSavedPost = asyncHandler(async (req, res) => {
+  const user = req.user;
+
+  const limit = Number(req.query.limit) || 18;
+
+  const currentPage = Number(req.query.page) || 1;
+
+  const skipPost = limit * (currentPage - 1);
+
+  const totalPosts = await Post.find({
+    _id: { $in: user.saved },
+  }).countDocuments();
+
+  const maxPages = Math.ceil(totalPosts / limit);
+
+  const saved = await Post.find({
+    _id: { $in: user.saved },
+  })
+    .populate("postedBy likes", "_id username profilePicture slug")
+    .populate({
+      path: "comments",
+      populate: {
+        path: "user",
+        select: "_id username profilePicture slug",
+      },
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .skip(skipPost);
+
+  res.status(200).json({ posts: saved, totalPosts, maxPages });
 });
 
 // @desc    like and unlike post
@@ -201,7 +274,7 @@ const likeAndUnlike = asyncHandler(async (req, res) => {
 });
 
 // @desc    save and unsave post
-// @route   UPDATE /post/:postId/saveandunsave
+// @route   PUT /post/:postId/saveandunsave
 // @access  PRIVATE
 const saveAndUnsave = asyncHandler(async (req, res) => {
   const user = req.user;
@@ -255,11 +328,16 @@ const addComment = asyncHandler(async (req, res) => {
   }
 
   try {
-    await post.updateOne({
-      $push: { comments: { user: req.user._id, comment: req.body.comment } },
-    });
+    const result = await Post.findByIdAndUpdate(
+      req.params.postId,
+      {
+        $push: { comments: { user: req.user._id, comment: req.body.comment } },
+      },
+      { new: true }
+    );
 
     const data = {
+      _id: result.comments[result.comments.length - 1]._id,
       postId: req.params.postId,
       user: {
         _id: req.user._id,
@@ -280,8 +358,10 @@ module.exports = {
   uploadPost,
   getPosts,
   getPostDetail,
+  updatePost,
   deletePost,
   getPostFollowing,
+  getSavedPost,
   likeAndUnlike,
   saveAndUnsave,
   addComment,

@@ -21,22 +21,18 @@ const getUser = asyncHandler(async (req, res) => {
   const slug = req.params.slug;
 
   const user = await User.findOne({ slug })
-    // .populate({
-    //   path: "followings followers",
-    //   select: "_id username profilePicture fullname slug",
-    // })
     .populate({
-      path: "saved posts",
+      path: "posts",
     })
     .populate({
-      path: "saved posts",
+      path: "posts",
       populate: {
         path: "postedBy likes savedBy",
         select: "_id username profilePicture slug",
       },
     })
     .populate({
-      path: "saved posts",
+      path: "posts",
       populate: {
         path: "comments",
         populate: {
