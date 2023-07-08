@@ -8,6 +8,7 @@ const { credentials } = require("./middleware/credentials");
 const { errorHandler } = require("./middleware/errorMiddleware");
 const cookieParser = require("cookie-parser");
 const { connectDB } = require("./config/db");
+const { connectSocket } = require("./config/socket");
 
 const port = process.env.PORT || 5000;
 
@@ -16,35 +17,7 @@ const server = http.createServer(app);
 connectDB();
 
 // socket io
-const io = require("socket.io")(server, {
-  cors: {
-    origin: ["http://localhost:5173"],
-  },
-});
-io.on("connection", (socket) => {
-  const id = socket.handshake.query.id;
-  socket.join(id);
-
-  socket.on("send-message", ({ roomId, recipients, sender, text }, cb) => {
-    const currentDate = Date.now();
-    recipients.forEach((recipient) => {
-      // const newRecipients = recipients.filter((r) => r !== recipient);
-      // newRecipients.push(id);
-      socket.broadcast.to(recipient._id).emit("receive-message", {
-        roomId,
-        recipients,
-        sender,
-        text,
-        createdAt: currentDate,
-      });
-    });
-
-    // Assuming recipient received the message successfully
-    if (cb) {
-      cb({ success: true, createdAt: currentDate });
-    }
-  });
-});
+connectSocket(server);
 
 // if the server allows the request to include credentials add this
 app.use(credentials);
@@ -59,6 +32,7 @@ app.use(express.static("./public"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/user", require("./routes/userRoutes"));
 app.use("/api/post", require("./routes/postRoutes"));
+app.use("/api/conversation", require("./routes/conversationRoutes"));
 
 app.use(errorHandler);
 
