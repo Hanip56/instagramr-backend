@@ -6,12 +6,27 @@ const fs = require("fs");
 const { promisify } = require("util");
 
 // @desc    Get all user
-// @route   POST /api/user
+// @route   GET /api/user
 // @access  PUBLIC
 const getUsers = asyncHandler(async (req, res) => {
   const users = await User.find();
 
   res.status(200).json({ users });
+});
+
+// @desc    Get Suggested user
+// @route   POST /api/user/suggested
+// @access  PRIVATE
+const getSuggestedUser = asyncHandler(async (req, res) => {
+  const limit = req.query.limit || 20;
+  const users = await User.find({
+    $and: [
+      { _id: { $ne: req.user._id } },
+      { posts: { $exists: true, $not: { $size: 0 } } },
+    ],
+  }).limit(limit);
+
+  res.status(200).json(users);
 });
 
 // @desc    Get one user
@@ -265,6 +280,7 @@ const removeProfilePicture = asyncHandler(async (req, res) => {
 module.exports = {
   getUsers,
   getUser,
+  getSuggestedUser,
   getFollowers,
   getFollowings,
   followUser,

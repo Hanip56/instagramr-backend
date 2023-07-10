@@ -9,12 +9,14 @@ const {
   removeProfilePicture,
   getFollowers,
   getFollowings,
+  getSuggestedUser,
 } = require("../controllers/userCtrl");
 const { protect } = require("../middleware/authMiddleware");
 
 const router = require("express").Router();
 
 router.route("/").get(getUsers);
+router.route("/suggested").get(protect, getSuggestedUser);
 router.route("/find").get(findUser);
 router.route("/:slug").get(getUser);
 router.route("/:slug/followers").get(getFollowers);
