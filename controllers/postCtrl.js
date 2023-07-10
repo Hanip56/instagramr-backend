@@ -158,9 +158,10 @@ const updatePost = asyncHandler(async (req, res) => {
       },
       { new: true }
     );
+    res.status(200).json(updatedPost);
+  } else {
+    res.status(200).json(post);
   }
-
-  res.status(200).json(post._id);
 });
 
 // @desc    get post of following

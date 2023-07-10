@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("ffmpeg-static");
 const ffprobePath = require("ffprobe-static").path;
+const sharp = require("sharp");
 const fs = require("fs");
 
 ffmpeg.setFfprobePath(ffprobePath);
@@ -65,8 +66,8 @@ postSchema.set("toJSON", { virtuals: true });
 
 postSchema.pre("save", function (next) {
   if (this.isModified("content")) {
+    const currentPost = this;
     if (this.contentType === "video") {
-      const currentPost = this;
       const oldFilePath = `./public/thumbnail/${currentPost?.thumbnail}`;
       const filename = `${currentPost.content[0]}_thumbnail.png`;
       const path = `./public/${currentPost.content[0]}`;
@@ -86,6 +87,21 @@ postSchema.pre("save", function (next) {
           count: 1,
           filename,
           folder: "./public/thumbnail",
+        });
+    } else if (this.contentType === "image") {
+      const path = `./public/${currentPost.content[0]}`;
+      const filename = `${currentPost.content[0]}_thumbnail.webp`;
+
+      sharp(path)
+        .resize(400, 400)
+        .toFormat("webp")
+        .toFile(`./public/thumbnail/${filename}`, (err, info) => {
+          if (err) {
+            return next(err);
+          } else {
+            currentPost.thumbnail = filename;
+            return next();
+          }
         });
     }
   }

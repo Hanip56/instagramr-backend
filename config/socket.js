@@ -23,9 +23,11 @@ const connectSocket = (server) => {
   io.on("connection", (socket) => {
     const id = socket.handshake.query.id;
     socket.join(id);
-    addUser(id);
-    io.emit("getOnlineUsers", users);
 
+    socket.on("addUser", () => {
+      addUser(id);
+      io.emit("getOnlineUsers", users);
+    });
     socket.on("send-message", ({ roomId, recipients, sender, text }, cb) => {
       const currentDate = Date.now();
       recipients.forEach((recipient) => {
@@ -49,7 +51,6 @@ const connectSocket = (server) => {
 
     //  when  disconnect
     socket.on("disconnect", () => {
-      console.log(`a user with id:${id} has been disconnected`);
       removeUser(id);
       io.emit("getOnlineUsers", users);
     });

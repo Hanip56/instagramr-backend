@@ -5,7 +5,20 @@ const Conversation = require("../models/Conversation");
 // @route   GET /conversation
 // @access  PUBLIC
 const getAllConversations = asyncHandler(async (req, res) => {
-  const conversations = await Conversation.find();
+  const { members } = req.query;
+
+  let filter = {};
+
+  if (members) {
+    const arrayMembers = members.split(",");
+    filter = {
+      members: {
+        $all: arrayMembers.map((userId) => ({ $elemMatch: { userId } })),
+      },
+    };
+  }
+
+  const conversations = await Conversation.find(filter);
 
   res.status(200).json(conversations);
 });
@@ -24,24 +37,63 @@ const getConversation = asyncHandler(async (req, res) => {
   res.status(200).json(conversation);
 });
 
+// @desc    get conversation by members
+// @route   GET /conversation/members
+// @access  PRIVATE
+const getConversationByMembers = asyncHandler(async (req, res) => {
+  const { members } = req.params;
+
+  const membersWithOwnId = [...members, req.user._id.toString()];
+
+  const conversationExist = await Conversation.findOne({
+    members: {
+      $all: membersWithOwnId.map((userId) => ({ $elemMatch: { userId } })),
+    },
+  });
+
+  if (!conversationExist) {
+    res.status(404);
+    throw new Error("Conversation not found");
+  }
+
+  res.status(200).json(conversationExist);
+});
+
 // @desc    get conversation by userId
 // @route   GET /conversation/user
 // @access  PRIVATE
 const getOwnConversations = asyncHandler(async (req, res) => {
   const conversations = await Conversation.find({
     "members.userId": req.user._id,
+  }).populate({
+    path: "members.userId",
+    select: "_id username slug profilePicture fullname",
   });
 
-  // get chat based when join
-  const conversationsJoin = [...conversations].map((conversation) => {
+  const filteredConversation = [...conversations].filter((conversation) => {
     const currentUser = conversation.members.find(
-      (member) => member.userId.toString() === req.user._id.toString()
+      (member) => member.userId._id.toString() === req.user._id.toString()
     );
+    if (currentUser.isLeave === true) {
+      return false;
+    } else {
+      return true;
+    }
+  });
+  // get chat based when join
+  const conversationsJoin = filteredConversation.map((conversation) => {
+    const currentUser = conversation.members.find(
+      (member) => member.userId._id.toString() === req.user._id.toString()
+    );
+
+    const members = conversation.members
+      .map((member) => member.userId)
+      .filter((member) => member._id.toString() !== req.user._id.toString());
     conversation.chats = conversation.chats.filter(
       (chat) => chat.createdAt >= currentUser.join
     );
 
-    return conversation;
+    return { ...conversation._doc, members };
   });
 
   res.status(200).json(conversationsJoin);
@@ -51,30 +103,32 @@ const getOwnConversations = asyncHandler(async (req, res) => {
 // @route   POST /conversation
 // @access  PRIVATE
 const createConversation = asyncHandler(async (req, res) => {
-  const { roomId, members, message } = req.body;
+  let { members, roomId } = req.body;
 
-  if (!roomId || members.length < 1 || !message) {
+  if (members.length < 1) {
     res.status(400);
-    throw new Error("Please add all required fields; *roomId *members *chats");
+    throw new Error("Please add all required fields; *roomId *members");
   }
 
-  const membersInObj = members.map((userId) => ({ userId }));
+  members.push(req.user._id.toString());
 
-  //   if the same people conversation exist
+  //   if conversation with the same people exist
   const conversationExist = await Conversation.findOne({
     members: { $all: members.map((userId) => ({ $elemMatch: { userId } })) },
+  }).populate({
+    path: "members.userId",
+    select: "_id username slug profilePicture fullname",
   });
-  const chat = {
-    userId: req.user._id,
-    text: message,
-  };
 
+  const currentDate = Date.now();
+
+  // join and update joinDate
   if (conversationExist) {
     conversationExist.members = conversationExist.members.map((member) => {
-      if (member.userId.toString() === req.user._id.toString()) {
+      if (member.userId._id.toString() === req.user._id.toString()) {
         return {
           ...member,
-          join: Date.now(),
+          join: currentDate,
           isLeave: false,
         };
       } else {
@@ -82,19 +136,36 @@ const createConversation = asyncHandler(async (req, res) => {
       }
     });
 
-    conversationExist.chats = [...conversationExist.chats, chat];
-
     await conversationExist.save();
 
-    res.status(200).json(conversationExist);
+    const membersConvert = conversationExist.members
+      .map((member) => member.userId)
+      .filter((member) => member._id.toString() !== req.user._id.toString());
+
+    res
+      .status(200)
+      .json({ ...conversationExist._doc, members: membersConvert });
   } else {
-    const conversation = await Conversation.create({
+    //create
+    const membersInObj = members.map((userId) => ({
+      userId,
+    }));
+
+    let conversation = await Conversation.create({
       roomId,
       members: membersInObj,
-      chats: [chat],
     });
 
-    res.status(201).json(conversation);
+    conversation = await conversation.populate({
+      path: "members.userId",
+      select: "_id username slug profilePicture fullname",
+    });
+
+    const membersConvert = conversation.members
+      .map((member) => member.userId)
+      .filter((member) => member._id.toString() !== req.user._id.toString());
+
+    res.status(201).json({ ...conversation._doc, members: membersConvert });
   }
 });
 
@@ -167,6 +238,7 @@ const deleteConversation = asyncHandler(async (req, res) => {
 module.exports = {
   getAllConversations,
   getConversation,
+  getConversationByMembers,
   getOwnConversations,
   createConversation,
   sendMessage,

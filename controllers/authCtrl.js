@@ -2,23 +2,23 @@ const User = require("../models/User");
 const asyncHandler = require("express-async-handler");
 const jwt = require("jsonwebtoken");
 
-// const sendUserData = (user) => ({
-//   id: user?.id,
-//   username: user?.username,
-//   email: user?.email,
-//   fullname: user?.fullname,
-//   slug: user?.slug,
-//   isAdmin: user?.isAdmin,
-//   profilePicture: user?.profilePicture,
-//   posts: user?.posts,
-//   saved: user?.saved,
-//   followers: user?.followers,
-//   followings: user?.followings,
-//   createdAt: user?.createdAt,
-//   updatedAt: user?.updatedAt,
-// });
+const sendUserData = (user) => ({
+  _id: user?._id,
+  username: user?.username,
+  email: user?.email,
+  fullname: user?.fullname,
+  slug: user?.slug,
+  isAdmin: user?.isAdmin,
+  profilePicture: user?.profilePicture,
+  posts: user?.posts,
+  saved: user?.saved,
+  followers: user?.followers,
+  followings: user?.followings,
+  createdAt: user?.createdAt,
+  updatedAt: user?.updatedAt,
+});
 const cookieName = "instagramrJWT";
-const sendUserData = (user) => user;
+// const sendUserData = (user) => user;
 
 // @desc    register user
 // @route   POST /api/auth
