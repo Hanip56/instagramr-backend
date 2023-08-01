@@ -1,4 +1,5 @@
 const IO = require("socket.io");
+const allowOrigins = require("./allowOrigins");
 
 let users = [];
 
@@ -16,7 +17,7 @@ const removeUser = (userId) => {
 const connectSocket = (server) => {
   const io = IO(server, {
     cors: {
-      origin: ["http://localhost:5173"],
+      origin: allowOrigins,
     },
   });
 
